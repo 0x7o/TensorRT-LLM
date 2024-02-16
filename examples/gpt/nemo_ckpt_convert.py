@@ -33,9 +33,34 @@ from utils.nemo import (UnpackedNemoCheckpointDir, copy_tokenizer_files,
                         nemo_config_to_ini_config, unpack_nemo_ckpt,
                         update_tokenizer_paths)
 
-from tensorrt_llm._utils import str_dtype_to_torch, torch_to_numpy
-
 LOGGER = logging.getLogger(__name__)
+
+_str_to_torch_dtype_dict = dict(
+    bfloat16=torch.bfloat16,
+    float16=torch.float16,
+    float32=torch.float32,
+    int64=torch.int64,
+    int32=torch.int32,
+    int8=torch.int8,
+    bool=torch.bool,
+    fp8=torch.float8_e4m3fn,
+)
+
+def str_dtype_to_torch(dtype):
+    ret = _str_to_torch_dtype_dict.get(dtype)
+    assert ret is not None, f'Unsupported dtype: {dtype}'
+    return ret
+
+
+def torch_to_numpy(x: torch.Tensor):
+    assert isinstance(x, torch.Tensor), \
+        f'x must be a torch.Tensor object, but got {type(x)}.'
+    if x.dtype == torch.bfloat16:
+        return x.view(torch.int16).detach().cpu().numpy().view(np_bfloat16)
+    elif x.dtype == torch.float8_e4m3fn:
+        return x.view(torch.int8).detach().cpu().numpy().view(np_float8)
+    else:
+        return x.detach().cpu().numpy()
 
 
 def rename_key(old_key: str, pp_rank: int, num_layers: int, pp_size: int):
