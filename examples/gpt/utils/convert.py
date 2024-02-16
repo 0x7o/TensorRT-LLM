@@ -19,7 +19,15 @@
 import numpy as np
 import torch
 
-from tensorrt_llm._utils import torch_to_numpy
+def torch_to_numpy(x: torch.Tensor):
+    assert isinstance(x, torch.Tensor), \
+        f'x must be a torch.Tensor object, but got {type(x)}.'
+    if x.dtype == torch.bfloat16:
+        return x.view(torch.int16).detach().cpu().numpy().view(np_bfloat16)
+    elif x.dtype == torch.float8_e4m3fn:
+        return x.view(torch.int8).detach().cpu().numpy().view(np_float8)
+    else:
+        return x.detach().cpu().numpy()
 
 
 def cpu_map_location(storage, loc):
